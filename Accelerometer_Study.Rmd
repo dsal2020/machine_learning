@@ -22,7 +22,7 @@ acc.nona.training<-acc.training[, no_na]
 acc.nona.training<-acc.nona.training[,-c(1:8)]
 dim(acc.nona.training)
 ```
-Next I partitioned acc.nona.training into a training and test set to work on my final model.
+Next I partitioned acc.nona.training into a training and test set to work on my final model. 
 ```{r}
 library(caret)
 inTrain<-createDataPartition(y=acc.nona.training$classe,p=0.7,list=FALSE)
@@ -31,18 +31,31 @@ testing<-acc.nona.training[-inTrain,]
 
 ```
 
-I worked with a random forest model set up with cross validation. 
+As this is a classification problem, rather than a regression problem, i looked at a basic classification tree model, and a random forest model. 
 ```{r}
 set.seed(1234)
-control<-trainControl(method="cv",number=3,verbose=T,allowParallel=T)
-model.rf<-train(classe~.,data=training, method="rf", trControl=trainControl, verbose=F)
-fit<-predict(model.rf,testing)
+
+model.rpart<-train(classe~.data=training,method="rpart")
+model.rf<-train(classe~.,data=training, method="rf", verbose=FALSE)
+fit<-predict(model.rpart,testing)
 confusionMatrix(fit, testing$classe)
+
+fit<-predict(model.rf,testing)
+confusionMatrix(fit,testing$classe)
 ```
-The model is 99.4% accurate with a 95% CI of 99.21% to 99.61%
+The basic classification tree only gave me an out of sample accuracy of 48%. With random forests being a better out of sample predictor, I setup the rf method to use cross validation. 
+```{r}
+set.seed(3333)
+control<-trainControl(method="cv",number=3,verbose=TRUE,allowParallel=TRUE)
+model.rfa<-train(classe~.,data=training, method="rf", trControl=control, verbose=FALSE)
+fit<-predict(model.rfa,testing)
+confusionMatrix(fit,testing$classe)
+```
+
+The model is 99.4% accurate out of sample with a 95% CI of 99.21% to 99.61%
 When using it on the test data, we get the following results 
 ```{r}
 acc.testing<-acc.testing[,names(acc.nona.training[,-52])]
-final_fit<-predict(model.rf,acc.testing)
+final_fit<-predict(model.rfa,acc.testing)
 final_fit
 ```
