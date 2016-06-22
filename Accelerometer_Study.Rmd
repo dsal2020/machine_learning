@@ -1,0 +1,48 @@
+---
+title: "Predicting Excercise Effectiveness from Accelerometer Data"
+---
+
+Synopsis: The purpose of this exercise is to find a model that accurately predicts how well a person exercised based on data collected from accelerometers attached to the belt, forearm, arm and dumbbell of a participant. 
+
+Data Processing 
+Data were gathered from http://groupware.les.inf.puc-rio.br/har. The data had already been split into a training and test data set, and the data from the training set were loaded into acc.training, and from the testing set into acc.testing
+
+```{r cache=TRUE}
+
+acc.training<-read.csv("pml-training.csv",na.strings=c("NA","#DIV/0!"))
+acc.testing<-read.csv("pml-testing.csv",na.strings=c("NA","#DIV/0!"))
+
+```
+The data shows that the 'classe' variable is ordinal categorical and that there are several variables which represent aggregates, and contain NA's or #DIV/0. These data will not be useful in creating a learning model. I reduced the dataset to exclude these variables from the prediction, as well as the name and timestamp data. 
+
+```{r}
+
+no_na<-apply(acc.training,2,function(x) !any(is.na(x)))
+acc.nona.training<-acc.training[, no_na] 
+acc.nona.training<-acc.nona.training[,-c(1:8)]
+dim(acc.nona.training)
+```
+Next I partitioned acc.nona.training into a training and test set to work on my final model.
+```{r}
+library(caret)
+inTrain<-createDataPartition(y=acc.nona.training$classe,p=0.7,list=FALSE)
+training<-acc.nona.training[inTrain,]
+testing<-acc.nona.training[-inTrain,]
+
+```
+
+I worked with a random forest model set up with cross validation. 
+```{r}
+set.seed(1234)
+control<-trainControl(method="cv",number=3,verbose=T,allowParallel=T)
+model.rf<-train(classe~.,data=training, method="rf", trControl=trainControl, verbose=F)
+fit<-predict(model.rf,testing)
+confusionMatrix(fit, testing$classe)
+```
+The model is 99.4% accurate with a 95% CI of 99.21% to 99.61%
+When using it on the test data, we get the following results 
+```{r}
+acc.testing<-acc.testing[,names(acc.nona.training[,-52])]
+final_fit<-predict(model.rf,acc.testing)
+final_fit
+```
